@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>包好吃湯包店籌備 - 專業 WBS 與全局甘特圖系統 (完整版)</title>
+    
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/frappe-gantt/0.6.1/frappe-gantt.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/frappe-gantt/0.6.1/frappe-gantt.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    
+    <style>
+        :root {
+            --primary-color: #4A90E2; --secondary-color: #2ECC71; --danger-color: #E74C3C;
+            --warning-color: #E67E22; --excel-color: #27AE60; --qr-color: #8E44AD;
+            --cpm-color: #C0392B; --edit-color: #F39C12; --bg-color: #F5F7FA; --border-color: #DCDFE6; --text-color: #333333;
+        }
+
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif, 'Microsoft JhengHei'; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .container { background-color: #FFFFFF; width: 100%; max-width: 1300px; padding: 30px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); position: relative; }
+        h1 { text-align: center; color: var(--primary-color); border-bottom: 2px solid var(--primary-color); padding-bottom: 15px; margin-bottom: 20px; }
+
+        .top-toolbar { display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px dashed #E4E7ED; flex-wrap: wrap;}
+        .tabs { display: flex; gap: 15px; margin-bottom: 25px; border-bottom: 2px solid var(--border-color); padding-bottom: 0; overflow-x: auto; white-space: nowrap; }
+        .tab-btn { padding: 12px 15px; border: none; background-color: transparent; font-size: 15px; font-weight: bold; cursor: pointer; color: #7F8C8D; transition: all 0.3s ease; margin-bottom: -2px; border-bottom: 4px solid transparent; }
+        .tab-btn:hover { color: var(--primary-color); }
+        .tab-btn.active { color: var(--primary-color); border-bottom: 4px solid var(--primary-color); }
+        .tab-btn.active-cpm { color: var(--cpm-color); border-bottom: 4px solid var(--cpm-color); }
+
+        .control-panel { display: flex; gap: 10px; margin-bottom: 20px; background-color: #F8FAFC; padding: 15px; border-radius: 8px; border: 1px solid var(--border-color); flex-wrap: wrap; align-items: flex-end; }
+        .input-group { display: flex; flex-direction: column; flex: 1; min-width: 120px; }
+        .input-group.wide { min-width: 200px; flex: 2; }
+        .input-group label { font-size: 12px; color: #666; margin-bottom: 4px; font-weight: bold; }
+        .control-panel input, .control-panel select { padding: 8px; border: 1px solid var(--border-color); border-radius: 5px; font-size: 14px; width: 100%; box-sizing: border-box; }
+
+        /* 一般按鈕共用設定 */
+        .btn { padding: 10px 15px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 13px; transition: all 0.2s; height: 32px; display: flex; align-items: center; justify-content: center; gap: 5px; }
+        .btn-primary { background-color: var(--primary-color); color: white; min-width: 90px; height: 36px; font-size: 14px;}
+        .btn-primary:hover { background-color: #357ABD; }
+        
+        /* ====== WBS 列表操作按鈕優化 ====== */
+        .btn-danger { background-color: var(--danger-color); color: white; padding: 6px 12px; font-size: 13px; white-space: nowrap;}
+        .btn-edit { background-color: var(--edit-color); color: white; padding: 6px 12px; font-size: 13px; white-space: nowrap;}
+        .btn-edit:hover { background-color: #D68910; }
+        .wbs-actions { display: flex; flex-direction: column; gap: 8px; min-width: 90px; align-items: stretch; justify-content: center; }
+        /* ================================== */
+
+        .btn-excel { background-color: var(--excel-color); color: white;}
+        .btn-excel-outline { background-color: white; color: var(--excel-color); border: 1px solid var(--excel-color);}
+        .btn-qr { background-color: var(--qr-color); color: white; }
+        .btn-save { background-color: #34495e; color: white; }
+        .btn-clear { background-color: white; color: var(--danger-color); border: 1px solid var(--danger-color); }
+        .btn-cancel { background-color: #95A5A6; color: white; height: 36px; font-size: 14px; display: none; }
+
+        /* WBS 視圖清單 */
+        .wbs-container { border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; min-height: 300px; }
+        .wbs-item { display: flex; align-items: flex-start; justify-content: space-between; padding: 12px; margin-bottom: 8px; background-color: #FFFFFF; border: 1px solid #E4E7ED; border-radius: 5px; transition: box-shadow 0.2s; }
+        .wbs-item:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-color: var(--primary-color); }
+        .wbs-item.editing { background-color: #FEF9E7; border-color: var(--edit-color); } 
+        .wbs-content { display: flex; align-items: flex-start; gap: 12px; width: 100%; }
+        .wbs-id-box { text-align: center; min-width: 60px; }
+        .wbs-id { font-weight: bold; color: var(--primary-color); background-color: #E1F0FF; padding: 4px 8px; border-radius: 4px; font-size: 13px; display: block;}
+        .wbs-internal-id { font-size: 11px; color: #95A5A6; margin-top: 4px; display: block; }
+        .wbs-details { display: flex; flex-direction: column; gap: 6px; width: 100%; }
+        .wbs-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .wbs-name { font-size: 15px; font-weight: bold; color: #2C3E50; }
+        .wbs-assignee { font-size: 12px; color: var(--warning-color); background: #FDEDEC; padding: 2px 8px; border-radius: 12px; border: 1px solid #FADBD8;}
+        .wbs-dep { font-size: 12px; color: #8E44AD; background: #F4ECF7; padding: 2px 8px; border-radius: 12px; border: 1px solid #D7BDE2;}
+        .wbs-meta-row { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
+        .wbs-dates { font-size: 12px; color: #7F8C8D; background: #eee; padding: 2px 6px; border-radius: 4px;}
+        .wbs-notes { font-size: 12px; color: #95A5A6; font-style: italic; }
+
+        /* 甘特圖相關 */
+        .cpm-notice { display: none; background: #FDEDEC; color: #C0392B; padding: 10px; border-radius: 5px; margin-bottom: 10px; font-weight: bold; text-align: center; border: 1px solid #FADBD8; }
+        .gantt-top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; background: #EBF5FB; padding: 10px 15px; border-radius: 5px; flex-wrap: wrap; gap: 10px;}
+        .gantt-zoom-toolbar { display: flex; align-items: center; gap: 8px; }
+        .btn-zoom { background: white; border: 1px solid var(--primary-color); color: var(--primary-color); padding: 5px 12px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold;}
+        .btn-zoom:hover { background: var(--primary-color); color: white; }
+
+        .color-picker-group { display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: bold; color: #2C3E50; flex-wrap: wrap;}
+        .color-item { display: flex; align-items: center; gap: 4px; background: white; padding: 4px 8px; border-radius: 4px; border: 1px solid #ccc; }
+        .color-item input[type="color"] { border: none; width: 20px; height: 24px; padding: 0; cursor: pointer; background: transparent;}
+
+        .gantt-master-box { display: flex; border: 1px solid var(--border-color); border-radius: 8px; background: #fff; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+        .gantt-left-panel { flex: 0 0 500px; border-right: 1px solid #DCDFE6; background: #fff; z-index: 2; display: flex; flex-direction: column; }
+        .gantt-right-panel { flex: 1; overflow-x: auto; overflow-y: hidden; background: #fff; position: relative; }
+
+        .gantt-header-row { height: 50px; display: flex; align-items: center; background-color: #F8FAFC; border-bottom: 1px solid #E4E7ED; font-weight: bold; font-size: 13px; color: #2C3E50; box-sizing: border-box; }
+        .gantt-data-row { height: 40px; display: flex; align-items: center; border-bottom: 1px solid #EBEFF2; font-size: 13px; box-sizing: border-box; }
+
+        .col-wbs { flex: 0 0 250px; padding-left: 15px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+        .col-owner { flex: 0 0 100px; text-align: center; }
+        .col-time { flex: 0 0 130px; text-align: center; font-size: 12px; color: #7F8C8D; }
+        
+        .wbs-text-code { color: var(--primary-color); font-weight: bold; margin-right: 5px; }
+        .badge-owner { display: inline-block; padding: 2px 6px; background: #FDEDEC; color: #E67E22; border-radius: 4px; font-size: 11px; border: 1px solid #FADBD8;}
+
+        .gantt .details-container { z-index: 50; }
+        .custom-tooltip { background: white; border: 1px solid #ccc; padding: 12px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); min-width: 150px; max-width: 250px; word-wrap: break-word;}
+        .custom-tooltip h4 { margin: 0 0 8px 0; color: #2C3E50; font-size: 14px; border-bottom: 1px solid #eee; padding-bottom: 5px;}
+        .custom-tooltip p { margin: 4px 0; font-size: 12px; color: #7F8C8D; }
+        .cpm-critical .bar { fill: #E74C3C !important; }
+        .cpm-critical .bar-progress { fill: #C0392B !important; }
+
+        /* WBS 組織架構圖 (OrgChart) */
+        #orgchart_wrapper { display: none; overflow: auto; text-align: center; padding: 40px 20px; background: #FAFAFA; border-radius: 8px; border: 1px solid var(--border-color); min-height: 400px; }
+        .custom-org-node { border: none !important; background: transparent !important; box-shadow: none !important; padding: 0 !important; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif, 'Microsoft JhengHei' !important; }
+        .custom-org-node-selected { background: transparent !important; border: none !important; }
+        .custom-org-node-selected .org-card { box-shadow: 0 0 0 3px var(--primary-color) !important; }
+        .google-visualization-orgchart-lineleft { border-left: 2px solid #BDC3C7 !important; }
+        .google-visualization-orgchart-lineright { border-right: 2px solid #BDC3C7 !important; }
+        .google-visualization-orgchart-linebottom { border-bottom: 2px solid #BDC3C7 !important; }
+
+        .org-card { background: #fff; border: 1px solid #DCDFE6; border-radius: 8px; box-shadow: 0 3px 6px rgba(0,0,0,0.05); min-width: 140px; max-width: 180px; overflow: hidden; text-align: center; transition: transform 0.2s; margin: 0 auto; }
+        .org-card:hover { transform: translateY(-3px); box-shadow: 0 5px 12px rgba(0,0,0,0.1); }
+        .org-card-header { color: #fff; font-weight: bold; padding: 6px 10px; font-size: 13px; text-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+        .org-card-body { padding: 12px 10px; font-size: 14px; font-weight: bold; color: #2C3E50; word-wrap: break-word; }
+        .org-card-footer { background: #F8FAFC; padding: 6px; font-size: 12px; color: #7F8C8D; border-top: 1px solid #eee; }
+
+        /* Modal & Toast */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 100; justify-content: center; align-items: center; }
+        .modal-content { background: #fff; padding: 25px; border-radius: 8px; width: 90%; max-width: 400px; position: relative; display: flex; flex-direction: column; align-items: center; }
+        .modal-close { position: absolute; top: 10px; right: 15px; font-size: 24px; cursor: pointer; color: #999; }
+        .qr-btn-group { display: flex; gap: 10px; width: 100%; } .qr-btn-group .btn { flex: 1; } #qrcode-render { margin: 15px 0; min-height: 200px; display: flex; justify-content: center; align-items: center; border: 1px dashed #ccc; padding: 10px; background: #fafafa;}
+        #toast { visibility: hidden; min-width: 200px; background-color: #2ECC71; color: #fff; text-align: center; border-radius: 5px; padding: 12px; position: fixed; z-index: 999; left: 50%; bottom: 30px; font-size: 15px; font-weight: bold; transform: translateX(-50%); box-shadow: 0 4px 10px rgba(0,0,0,0.2); transition: visibility 0.5s, opacity 0.5s linear; opacity: 0; }
+        #toast.show { visibility: visible; opacity: 1; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>包好吃湯包店籌備 - 專案規劃系統</h1>
+
+    <div class="top-toolbar">
+        <button class="btn btn-clear" onclick="clearData()">🗑️ 清空專案</button>
+        <button class="btn btn-save" onclick="saveData(true)">💾 儲存專案</button>
+        <button class="btn btn-qr" onclick="openQrModal()">📱 產生 QR Code</button>
+        <input type="file" id="excelUpload" accept=".xlsx, .xls" style="display: none;" onchange="importExcel(event)">
+        <button class="btn btn-excel-outline" onclick="document.getElementById('excelUpload').click()">📁 匯入 Excel</button>
+        <button class="btn btn-excel" onclick="exportExcel()">⬇️ 匯出 Excel</button>
+    </div>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchView('wbs')">WBS 拆解視圖</button>
+        <button class="tab-btn" onclick="switchView('orgchart')">WBS 架構圖視圖</button>
+        <button class="tab-btn" onclick="switchView('gantt')">時程甘特圖視圖</button>
+        <button class="tab-btn" onclick="switchView('cpm')">要徑分析視圖 (CPM)</button>
+    </div>
+
+    <div id="wbs_controls">
+        <div class="control-panel">
+            <div class="input-group">
+                <label>上層任務</label>
+                <select id="parentSelect"><option value="">(設為根節點專案)</option></select>
+            </div>
+            <div class="input-group">
+                <label>任務名稱 *</label>
+                <input type="text" id="taskName" placeholder="例如: 採購POS機" autocomplete="off">
+            </div>
+            <div class="input-group" style="min-width: 80px;">
+                <label>負責人員</label>
+                <input type="text" id="taskAssignee" placeholder="例如: 店長" autocomplete="off">
+            </div>
+            <div class="input-group">
+                <label>開始日期 *</label>
+                <input type="date" id="startDate">
+            </div>
+            <div class="input-group">
+                <label>結束日期 *</label>
+                <input type="date" id="endDate">
+            </div>
+            <div class="input-group" style="min-width: 80px;">
+                <label>前置任務 ID</label>
+                <input type="text" id="taskDependencies" placeholder="例: 2, 3" autocomplete="off">
+            </div>
+            <div class="input-group wide">
+                <label>備註說明</label>
+                <input type="text" id="taskNotes" placeholder="選填" autocomplete="off">
+            </div>
+            <div style="display: flex; gap: 5px; height: 36px; align-items: flex-end;">
+                <button class="btn btn-primary" id="mainSubmitBtn" onclick="submitTaskForm()">新增任務</button>
+                <button class="btn btn-cancel" id="cancelEditBtn" onclick="cancelEdit()">取消</button>
+            </div>
+        </div>
+        <div class="wbs-container" id="wbsList"></div>
+    </div>
+
+    <div id="orgchart_wrapper">
+        <div style="margin-bottom: 15px; color: #7F8C8D; font-size: 14px;">
+            💡 提示：此視圖最適合用於簡報報告，您可以使用截圖工具將下方架構圖直接貼入 PowerPoint。
+        </div>
+        <div id="orgchart_div">
+            <div style="padding: 40px; color: #95A5A6;">載入圖表引擎中...</div>
+        </div>
+    </div>
+
+    <div id="gantt_wrapper" style="display: none;">
+        <div id="cpm_notice" class="cpm-notice">⚠️ 紅色標示區塊為專案要徑 (Critical Path)，任何延遲將導致總工期延後。</div>
+        
+        <div class="gantt-top-bar">
+            <div class="gantt-zoom-toolbar">
+                <strong style="color:var(--primary-color);">🔍 時間軸：</strong>
+                <button class="btn-zoom" onclick="setZoom('Day')">日檢視</button>
+                <button class="btn-zoom" onclick="setZoom('Week')">週檢視</button>
+                <button class="btn-zoom" onclick="setZoom('Month')">月檢視</button>
+            </div>
+            <div class="color-picker-group" id="dynamic_color_pickers"></div>
+        </div>
+
+        <div class="gantt-master-box">
+            <div class="gantt-left-panel">
+                <div class="gantt-header-row">
+                    <div class="col-wbs">WBS 任務名稱</div>
+                    <div class="col-owner">負責人</div>
+                    <div class="col-time">時程</div>
+                </div>
+                <div id="custom_grid_body"></div>
+            </div>
+            <div class="gantt-right-panel">
+                <svg id="gantt_chart_svg"></svg>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="qrModal">
+    <div class="modal-content">
+        <span class="modal-close" onclick="closeQrModal()">&times;</span>
+        <h3>條碼產生器</h3>
+        <input type="text" id="qrInput" placeholder="輸入網址或文字" autocomplete="off">
+        <div class="qr-btn-group">
+            <button class="btn" style="background-color: var(--qr-color); color: white;" onclick="generateQRCode()">生成條碼</button>
+            <button class="btn btn-download-qr" id="downloadQrBtn" style="display:none;" onclick="downloadQRCode()">下載圖檔</button>
+        </div>
+        <div id="qrcode-render"></div>
+    </div>
+</div>
+<div id="toast">💾 資料已成功儲存至瀏覽器</div>
+<style id="dynamic-gantt-colors"></style>
+
+<script>
+    // 預設資料
+    const defaultTasks = [
+        { id: 1, parentId: null, name: '包好吃湯包店籌備專案', start: '2026-05-01', end: '2026-06-25', assignee: '專案主管', dependencies: '', notes: '桃園八德區籌備總管' },
+        { id: 2, parentId: 1, name: '專案管理與財務規劃', start: '2026-05-01', end: '2026-05-15', assignee: '財務部', dependencies: '', notes: '' },
+        { id: 6, parentId: 2, name: '開業預算編列與資金籌措', start: '2026-05-01', end: '2026-05-10', assignee: '財務部', dependencies: '', notes: '需包含前三個月準備金' },
+        { id: 13, parentId: 6, name: '評估碳邊境調節機制影響', start: '2026-05-01', end: '2026-05-05', assignee: 'ESG顧問', dependencies: '', notes: 'CBAM 初期成本評估' },
+        { id: 3, parentId: 1, name: '店面工程與裝潢', start: '2026-05-10', end: '2026-06-15', assignee: '工程發包', dependencies: '', notes: '' },
+        { id: 7, parentId: 3, name: '店面尋址與租賃簽約', start: '2026-05-10', end: '2026-05-20', assignee: '開發部', dependencies: '6', notes: '鎖定人潮密集區' },
+        { id: 11, parentId: 3, name: '室內裝潢與動線施工', start: '2026-05-21', end: '2026-06-15', assignee: '設計公司', dependencies: '7', notes: '注意廚房排煙系統' },
+        { id: 4, parentId: 1, name: '智慧營運與自動化系統', start: '2026-05-20', end: '2026-06-20', assignee: 'IT 規劃', dependencies: '', notes: '' },
+        { id: 9, parentId: 4, name: 'POS 系統採購設定', start: '2026-05-20', end: '2026-05-30', assignee: '店長', dependencies: '7', notes: '需支援多元行動支付' },
+        { id: 8, parentId: 4, name: 'RPA 點餐流程建置', start: '2026-05-25', end: '2026-06-10', assignee: '系統廠商', dependencies: '11', notes: '串接前端點餐機與後台顯示' }
+    ];
+
+    let tasks = [];
+    let nextId = 1;
+    let frappeGanttInstance = null;
+    let wbsMapCache = {};
+    let editingTaskId = null;
+    let isGoogleChartsLoaded = false;
+
+    const defaultPalette = ['#3498db', '#9b59b6', '#1abc9c', '#f39c12', '#e74c3c', '#34495e', '#7f8c8d', '#d35400', '#27ae60'];
+    let customColorState = {}; 
+
+    const STORAGE_KEY_TASKS = 'bao_hao_chi_tasks';
+    const STORAGE_KEY_COLORS = 'bao_hao_chi_colors';
+
+    google.charts.load('current', {packages:["orgchart"]});
+    google.charts.setOnLoadCallback(() => { isGoogleChartsLoaded = true; });
+
+    function loadData() {
+        const savedTasks = localStorage.getItem(STORAGE_KEY_TASKS);
+        const savedColors = localStorage.getItem(STORAGE_KEY_COLORS);
+        if (savedTasks && savedTasks !== '[]') {
+            tasks = JSON.parse(savedTasks);
+            nextId = Math.max(...tasks.map(t => t.id)) + 1;
+        } else {
+            tasks = JSON.parse(JSON.stringify(defaultTasks)); 
+            nextId = 14;
+        }
+        if (savedColors) { customColorState = JSON.parse(savedColors); }
+    }
+
+    function saveData(showManualToast = false) {
+        localStorage.setItem(STORAGE_KEY_TASKS, JSON.stringify(tasks));
+        localStorage.setItem(STORAGE_KEY_COLORS, JSON.stringify(customColorState));
+        const toast = document.getElementById("toast");
+        toast.innerText = showManualToast ? "💾 手動儲存成功！" : "✓ 資料已自動儲存";
+        toast.style.backgroundColor = showManualToast ? "#34495e" : "#2ECC71";
+        toast.className = "show";
+        setTimeout(function(){ toast.className = toast.className.replace("show", ""); }, 2500);
+    }
+
+    function clearData() {
+        if(confirm("⚠️ 警告：這將會清空目前所有的任務資料並恢復為空專案，確定要執行嗎？")) {
+            tasks = []; nextId = 1; customColorState = {}; cancelEdit();
+            localStorage.removeItem(STORAGE_KEY_TASKS); localStorage.removeItem(STORAGE_KEY_COLORS);
+            renderWBS();
+            document.getElementById('orgchart_div').innerHTML = '';
+            document.getElementById('gantt_chart_svg').innerHTML = '';
+            alert("專案已清空！");
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        document.getElementById('startDate').valueAsDate = new Date();
+        let tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 7);
+        document.getElementById('endDate').valueAsDate = tomorrow;
+        loadData(); renderWBS();
+    });
+
+    function renderDynamicColorPickers() {
+        let maxDepth = 1;
+        tasks.forEach(t => { if(wbsMapCache[t.id]) { let depth = wbsMapCache[t.id].split('.').length - 1; if(depth > maxDepth) maxDepth = depth; }});
+        let pickerHtml = '<span>🎨 階層自訂色：</span>';
+        for(let i = 1; i <= maxDepth; i++) {
+            if(!customColorState[i]) { customColorState[i] = defaultPalette[(i - 1) % defaultPalette.length]; }
+            pickerHtml += `<div class="color-item" title="第 ${i} 階層 (L${i})">L${i} <input type="color" value="${customColorState[i]}" onchange="updateDynamicColor(${i}, this.value)"></div>`;
+        }
+        document.getElementById('dynamic_color_pickers').innerHTML = pickerHtml; applyDynamicColors();
+    }
+
+    function updateDynamicColor(level, colorValue) { customColorState[level] = colorValue; applyDynamicColors(); saveData(); }
+    function applyDynamicColors() {
+        let styleStr = '';
+        for(let level in customColorState) {
+            let color = customColorState[level];
+            styleStr += `.wbs-level-${level} .bar { fill: ${color} !important; } .wbs-level-${level} .bar-progress { fill: ${color} !important; opacity: 0.8; }`;
+        }
+        document.getElementById('dynamic-gantt-colors').innerHTML = styleStr;
+    }
+
+    function updateWbsMap() {
+        wbsMapCache = {};
+        function traverse(parentId, prefix, level) {
+            let children = tasks.filter(t => t.parentId === parentId);
+            children.forEach((child, index) => {
+                let currentWbs = parentId === null ? "1.0" : `${prefix}.${index + 1}`;
+                wbsMapCache[child.id] = currentWbs; traverse(child.id, currentWbs, level + 1);
+            });
+        }
+        traverse(null, "1", 0);
+    }
+
+    function getStrictWbsSortedTasks() {
+        updateWbsMap();
+        return [...tasks].sort((a, b) => {
+            let wbsA = (wbsMapCache[a.id] || "99").split('.').map(Number);
+            let wbsB = (wbsMapCache[b.id] || "99").split('.').map(Number);
+            for(let i=0; i<Math.max(wbsA.length, wbsB.length); i++) {
+                let partA = wbsA[i] || 0; let partB = wbsB[i] || 0;
+                if (partA !== partB) return partA - partB;
+            }
+            return 0;
+        });
+    }
+
+    function applyCriticalPath(sortedTasks) {
+        sortedTasks.forEach(t => t.isCritical = false);
+        if (sortedTasks.length === 0) return sortedTasks;
+        let maxEndDate = Math.max(...sortedTasks.map(t => new Date(t.end).getTime()));
+        sortedTasks.forEach(t => {
+            let tEnd = new Date(t.end).getTime();
+            if (tEnd === maxEndDate) { t.isCritical = true; } else {
+                let dependents = sortedTasks.filter(d => {
+                    if(!d.dependencies) return false; return d.dependencies.toString().split(',').map(s=>s.trim()).includes(t.id.toString());
+                });
+                if (dependents.length > 0) {
+                    let minStart = Math.min(...dependents.map(d => new Date(d.start).getTime()));
+                    if (minStart - tEnd <= 86400000 * 2) t.isCritical = true;
+                }
+            }
+        });
+        return sortedTasks;
+    }
+
+    function switchView(viewType) {
+        const btns = document.querySelectorAll('.tab-btn');
+        btns.forEach(btn => { btn.classList.remove('active'); btn.classList.remove('active-cpm'); });
+
+        document.getElementById('wbs_controls').style.display = 'none';
+        document.getElementById('gantt_wrapper').style.display = 'none';
+        document.getElementById('orgchart_wrapper').style.display = 'none';
+
+        if (viewType === 'wbs') {
+            btns[0].classList.add('active');
+            document.getElementById('wbs_controls').style.display = 'block';
+        } else if (viewType === 'orgchart') {
+            btns[1].classList.add('active');
+            document.getElementById('orgchart_wrapper').style.display = 'block';
+            drawOrgChart();
+        } else if (viewType === 'gantt') {
+            btns[2].classList.add('active');
+            document.getElementById('gantt_wrapper').style.display = 'block';
+            document.getElementById('cpm_notice').style.display = 'none';
+            renderEngineGantt(false);
+        } else if (viewType === 'cpm') {
+            btns[3].classList.add('active-cpm');
+            document.getElementById('gantt_wrapper').style.display = 'block';
+            document.getElementById('cpm_notice').style.display = 'block';
+            renderEngineGantt(true);
+        }
+    }
+
+    function drawOrgChart() {
+        if (!isGoogleChartsLoaded) { setTimeout(drawOrgChart, 500); return; }
+        if (tasks.length === 0) { document.getElementById('orgchart_div').innerHTML = '<div style="padding:40px; color:#E74C3C; font-weight:bold;">目前沒有任何任務，請先至 WBS 拆解視圖新增！</div>'; return; }
+        
+        let sortedTasks = getStrictWbsSortedTasks(); 
+        let maxDepth = 1;
+        sortedTasks.forEach(t => { let d = wbsMapCache[t.id].split('.').length - 1; if(d > maxDepth) maxDepth = d; });
+        for(let i = 1; i <= maxDepth; i++) { if(!customColorState[i]) customColorState[i] = defaultPalette[(i - 1) % defaultPalette.length]; }
+
+        var data = new google.visualization.DataTable();
+        data.addColumn('string', 'Name');
+        data.addColumn('string', 'Manager');
+        data.addColumn('string', 'ToolTip');
+
+        let rows = [];
+        sortedTasks.forEach(t => {
+            let wbs = wbsMapCache[t.id];
+            let depth = wbs.split('.').length - 1;
+            let bgColor = customColorState[depth]; 
+            let assignee = (t.assignee && t.assignee !== '未指派') ? t.assignee : '';
+
+            let nodeHtml = `
+                <div class="org-card">
+                    <div class="org-card-header" style="background-color: ${bgColor};">${wbs}</div>
+                    <div class="org-card-body">${t.name}</div>
+                    ${assignee ? `<div class="org-card-footer">👤 ${assignee}</div>` : ''}
+                </div>
+            `;
+            let parentIdStr = t.parentId ? t.parentId.toString() : '';
+            rows.push([ { v: t.id.toString(), f: nodeHtml }, parentIdStr, t.notes || '' ]);
+        });
+
+        data.addRows(rows);
+        var chart = new google.visualization.OrgChart(document.getElementById('orgchart_div'));
+        chart.draw(data, { allowHtml: true, nodeClass: 'custom-org-node', selectedNodeClass: 'custom-org-node-selected' });
+    }
+
+    function renderEngineGantt(isCpmMode) {
+        if (tasks.length === 0) { document.getElementById('gantt_chart_svg').innerHTML = ''; document.getElementById('custom_grid_body').innerHTML = ''; return; }
+        let sortedTasks = getStrictWbsSortedTasks(); renderDynamicColorPickers();
+        if (isCpmMode) { sortedTasks = applyCriticalPath(sortedTasks); }
+        let gridHtml = '';
+        sortedTasks.forEach(t => {
+            let wbs = wbsMapCache[t.id]; let indent = (wbs.split('.').length - 1) * 15; 
+            let assignee = (t.assignee && t.assignee !== '未指派') ? t.assignee : '-';
+            let shortStart = t.start.substring(5).replace('-', '/'); let shortEnd = t.end.substring(5).replace('-', '/');
+            gridHtml += `<div class="gantt-data-row"><div class="col-wbs" style="padding-left: ${15 + indent}px;" title="${t.name}"><span class="wbs-text-code">${wbs}</span> ${t.name}</div><div class="col-owner">${assignee !== '-' ? `<span class="badge-owner">${assignee}</span>` : `<span style="color:#ccc">-</span>`}</div><div class="col-time">${shortStart} ~ ${shortEnd}</div></div>`;
+        });
+        document.getElementById('custom_grid_body').innerHTML = gridHtml;
+
+        let frappeTasks = sortedTasks.map(t => {
+            let depth = wbsMapCache[t.id].split('.').length - 1; let assignedClass = `wbs-level-${depth}`;
+            if (isCpmMode && t.isCritical) assignedClass = 'cpm-critical';
+            return { id: t.id.toString(), name: t.name, start: t.start, end: t.end, progress: 0, dependencies: t.dependencies ? t.dependencies.toString() : '', custom_class: assignedClass, wbs_code: wbsMapCache[t.id], notes: t.notes || '' };
+        });
+        document.getElementById('gantt_chart_svg').innerHTML = '';
+        frappeGanttInstance = new Gantt("#gantt_chart_svg", frappeTasks, {
+            header_height: 50, bar_height: 25, padding: 15, step: 24, view_modes: ['Quarter Day', 'Half Day', 'Day', 'Week', 'Month'], view_mode: 'Day',
+            custom_popup_html: function(task) {
+                const notesHtml = task.notes ? `<p><strong>備註：</strong>${task.notes}</p>` : '';
+                return `<div class="custom-tooltip"><h4>[${task.wbs_code}] ${task.name}</h4><p><strong>開始：</strong>${task.start}</p><p><strong>結束：</strong>${task.end}</p><p><strong>耗時：</strong>${Math.round((new Date(task.end) - new Date(task.start))/(1000*60*60*24)) + 1} 天</p>${notesHtml}</div>`;
+            }
+        });
+    }
+
+    function setZoom(mode) { if (frappeGanttInstance) frappeGanttInstance.change_view_mode(mode); }
+
+    function renderWBS() {
+        const wbsListEl = document.getElementById('wbsList');
+        const parentSelectEl = document.getElementById('parentSelect');
+        wbsListEl.innerHTML = '';
+        parentSelectEl.innerHTML = '<option value="">(設為根節點專案)</option>';
+        
+        let sortedTasks = getStrictWbsSortedTasks(); 
+        
+        sortedTasks.forEach((t) => {
+            let wbs = wbsMapCache[t.id];
+            let level = wbs.split('.').length - 1;
+            const margin = level * 30;
+            const itemDiv = document.createElement('div');
+            itemDiv.className = `wbs-item ${editingTaskId === t.id ? 'editing' : ''}`; 
+            itemDiv.style.marginLeft = `${margin}px`;
+            
+            // ====== 這裡已套用優化過的不換行按鈕 ======
+            const editBtn = `<button class="btn btn-edit" onclick="editTask(${t.id})">✏️ 編輯</button>`;
+            const deleteBtn = t.parentId === null ? '' : `<button class="btn btn-danger" onclick="deleteTask(${t.id})">🗑️ 刪除</button>`;
+            
+            const assigneeDisplay = t.assignee && t.assignee !== '未指派' ? `<span class="wbs-assignee">👤 ${t.assignee}</span>` : '';
+            const depDisplay = t.dependencies ? `<span class="wbs-dep">🔗 依賴 ID: ${t.dependencies}</span>` : '';
+            const notesDisplay = t.notes ? `<span class="wbs-notes">📝 ${t.notes}</span>` : '';
+
+            itemDiv.innerHTML = `
+                <div class="wbs-content">
+                    <div class="wbs-id-box"><span class="wbs-id">${wbs}</span><span class="wbs-internal-id">ID: ${t.id}</span></div>
+                    <div class="wbs-details">
+                        <div class="wbs-title-row"><span class="wbs-name">${t.name}</span>${assigneeDisplay}${depDisplay}</div>
+                        <div class="wbs-meta-row"><span class="wbs-dates">📅 ${t.start} ~ ${t.end}</span>${notesDisplay}</div>
+                    </div>
+                </div> 
+                <div class="wbs-actions">${editBtn}${deleteBtn}</div>
+            `;
+            wbsListEl.appendChild(itemDiv);
+
+            if (editingTaskId !== t.id) {
+                const option = document.createElement('option');
+                option.value = t.id; option.innerHTML = `${'&emsp;'.repeat(level)} [${wbs}] ${t.name}`;
+                parentSelectEl.appendChild(option);
+            }
+        });
+    }
+
+    function editTask(id) {
+        const task = tasks.find(t => t.id === id); if (!task) return;
+        editingTaskId = id;
+        document.getElementById('parentSelect').value = task.parentId || '';
+        document.getElementById('taskName').value = task.name;
+        document.getElementById('taskAssignee').value = task.assignee !== '未指派' ? task.assignee : '';
+        document.getElementById('startDate').value = task.start;
+        document.getElementById('endDate').value = task.end;
+        document.getElementById('taskDependencies').value = task.dependencies || '';
+        document.getElementById('taskNotes').value = task.notes || '';
+
+        const submitBtn = document.getElementById('mainSubmitBtn');
+        submitBtn.innerText = '更新任務'; submitBtn.style.backgroundColor = 'var(--edit-color)';
+        document.getElementById('cancelEditBtn').style.display = 'block';
+        renderWBS(); 
+        document.getElementById('wbs_controls').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function cancelEdit() {
+        editingTaskId = null;
+        document.getElementById('parentSelect').value = ''; document.getElementById('taskName').value = '';
+        document.getElementById('taskAssignee').value = ''; document.getElementById('taskDependencies').value = ''; document.getElementById('taskNotes').value = '';
+        const submitBtn = document.getElementById('mainSubmitBtn');
+        submitBtn.innerText = '新增任務'; submitBtn.style.backgroundColor = 'var(--primary-color)';
+        document.getElementById('cancelEditBtn').style.display = 'none';
+        renderWBS();
+    }
+
+    function submitTaskForm() {
+        const pId = document.getElementById('parentSelect').value, n = document.getElementById('taskName').value.trim(), a = document.getElementById('taskAssignee').value.trim(), s = document.getElementById('startDate').value, e = document.getElementById('endDate').value, d = document.getElementById('taskDependencies').value.trim(), notes = document.getElementById('taskNotes').value.trim();
+        if (!n || !s || !e) { alert('請輸入任務名稱與日期！'); return; }
+        if (new Date(s) > new Date(e)) { alert('開始不能晚於結束！'); return; }
+
+        if (editingTaskId) {
+            const taskIndex = tasks.findIndex(t => t.id === editingTaskId);
+            if (taskIndex > -1) {
+                if (pId && parseInt(pId) === editingTaskId) { alert("錯誤：父節點不能是自己！"); return; }
+                tasks[taskIndex] = { ...tasks[taskIndex], parentId: pId ? parseInt(pId) : null, name: n, assignee: a || '未指派', start: s, end: e, dependencies: d, notes: notes };
+            }
+            cancelEdit(); 
+        } else {
+            tasks.push({ id: nextId++, parentId: pId ? parseInt(pId) : null, name: n, assignee: a || '未指派', start: s, end: e, dependencies: d, notes: notes });
+            document.getElementById('taskName').value = ''; document.getElementById('taskDependencies').value = ''; document.getElementById('taskNotes').value = ''; 
+            renderWBS();
+        }
+        saveData(); 
+    }
+
+    function deleteTask(idToDelete) {
+        if (!confirm('刪除任務將連帶刪除子任務，確定嗎？')) return;
+        if (editingTaskId === idToDelete) cancelEdit();
+        let ids = new Set([idToDelete]);
+        function findC(pid) { tasks.forEach(t => { if (t.parentId === pid && !ids.has(t.id)) { ids.add(t.id); findC(t.id); } }); }
+        findC(idToDelete); tasks = tasks.filter(t => !ids.has(t.id)); 
+        renderWBS(); saveData(); 
+    }
+
+    function formatDateString(dateStr) { if(!dateStr) return new Date().toISOString().split('T')[0]; try { let d = new Date(dateStr); if (!isNaN(d.getTime())) return d.toISOString().split('T')[0]; return dateStr; } catch(e) { return new Date().toISOString().split('T')[0]; } }
+    function exportExcel() { if(tasks.length===0){alert('無資料匯出');return;} let exportData=tasks.map(t=>({'任務ID':t.id, '上層ID':t.parentId||'', '任務名稱':t.name, '負責人':t.assignee, '開始':t.start, '結束':t.end, '前置ID':t.dependencies||'', '備註':t.notes||''})); XLSX.writeFile(XLSX.utils.book_append_sheet(XLSX.utils.book_new(), XLSX.utils.json_to_sheet(exportData), "WBS"), "包好吃_WBS.xlsx"); }
+    function importExcel(e) { const f = e.target.files[0]; if(!f) return; const r = new FileReader(); r.onload=function(ev){ try { const d = XLSX.utils.sheet_to_json(XLSX.read(new Uint8Array(ev.target.result),{type:'array'}).Sheets[XLSX.read(new Uint8Array(ev.target.result),{type:'array'}).SheetNames[0]],{raw:false,dateNF:'yyyy-mm-dd'}); let n=[]; let maxId=0; d.forEach(row=>{ let id=parseInt(row['任務ID']||row['ID']); if(isNaN(id))return; if(id>maxId)maxId=id; n.push({ id:id, parentId:parseInt(row['上層ID'])||null, name:row['任務名稱']||'未命名', assignee:row['負責人']||'未指派', start:formatDateString(row['開始']), end:formatDateString(row['結束']), dependencies:(row['前置ID']||'').toString(), notes:row['備註']||row['Notes']||''});}); if(n.length>0){tasks=n; nextId=maxId+1; renderWBS(); saveData(); alert('匯入成功');} } catch(err) { alert('格式錯誤'); } }; r.readAsArrayBuffer(f); e.target.value=''; }
+    let qrcodeObj=null; function openQrModal(){document.getElementById('qrModal').style.display='flex';setTimeout(()=>document.getElementById('qrInput').focus(),100);} function closeQrModal(){document.getElementById('qrModal').style.display='none';} function generateQRCode(){const val=document.getElementById('qrInput').value.trim(); const rc=document.getElementById('qrcode-render'); if(!val){alert("請輸入網址");return;} rc.innerHTML=''; rc.style.background='#fff'; qrcodeObj=new QRCode(rc,{text:val,width:200,height:200,colorDark:"#000",colorLight:"#fff",correctLevel:QRCode.CorrectLevel.H}); document.getElementById('downloadQrBtn').style.display='block';} function downloadQRCode(){const c=document.getElementById('qrcode-render').querySelector('canvas'); if(c){const a=document.createElement('a');a.download='QRCode.png';a.href=c.toDataURL("image/png");a.click();}}
+</script>
+
+</body>
+</html>
